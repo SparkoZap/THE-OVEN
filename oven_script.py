@@ -1,4 +1,3 @@
-import os
 import shutil
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -6,49 +5,62 @@ from datetime import datetime, timedelta
 NORMAL = 30
 EXTENSION = 12
 
-current_date = datetime.now()
+CURRENT_DATE = datetime.now()
 
-def get_label(folder):
-    folder_name = folder.name
-    label = folder_name[folder_name.find("[")+1:folder_name.find("]")] # Ewww...
+def get_folder_label(folder):
+    folder_name:str = folder.name
 
-    return label
+    if "[" in folder_name and "]" in folder_name:
+        folder_label = folder_name[folder_name.find("[")+1:folder_name.find("]")] # Ewww...
+    else:
+        return None
+
+    return folder_label
+
 
 def get_creation(folder):
-    return datetime.fromtimestamp(os.stat(folder).st_birthtime)
+    return datetime.fromtimestamp(folder.stat().st_birthtime)
 
-def get_deadline(folder, label):
+
+def calc_deadline(folder, folder_label):
     deadline = get_creation(folder) + timedelta(days=NORMAL)
-    if label == "EXTEND":
+    
+    if folder_label == "EXTEND":
         deadline += timedelta(days=EXTENSION)
     return deadline
 
 
 def send_to_graveyard(root, folder):
-    graveyard = Path(f"{root}/[T]GRAVEYARD")
-    if not graveyard.exists():
-        os.mkdir(graveyard)
+    GRAVEYARD = root / "[T]GRAVEYARD"
+    
+    if not GRAVEYARD.exists():
+        GRAVEYARD.mkdir()
 
-    shutil.move(folder, graveyard)
+    shutil.move(folder, GRAVEYARD)
+
 
 def checker(root, folder:Path):
-    label = get_label(folder)
-    if not label == "T": 
-        for directory in folder.iterdir():
-            directory = Path(directory)
-            
-            label = get_label(directory)
-            deadline = get_deadline(directory, label)
-            
-            if directory.is_dir():    
-                if label == "F":
-                    checker(root, directory)
-                elif current_date >= deadline and label not in ["FINISHED"]:
-                    send_to_graveyard(root, directory)
+    for directory in folder.iterdir():
+        if directory.name.startswith("[T]") or "GRAVEYARD" in directory.name:
+            continue
+
+        directory = Path(directory)
+
+        folder_label = get_folder_label(directory)
+        deadline = calc_deadline(directory, folder_label)
+        
+        if directory.is_dir():
+            if folder_label == "F": 
+                checker(root, directory)
+            elif CURRENT_DATE < deadline and not folder_label == "FINISHED":
+                send_to_graveyard(root, directory)
+
 
 
 if __name__ == "__main__":
-    root = Path(f"{Path.cwd()}/Test")
+    root = Path("[OVEN]")
+
     if not root.exists():
-        os.mkdir(root)
+        root.mkdir()
+    
     checker(root, root)
