@@ -1,56 +1,50 @@
 import os
+import shutil
 from pathlib import Path
 from datetime import datetime, timedelta
-import shutil
 
 NORMAL = 30
 EXTENSION = 12
 
-current_date:datetime = datetime.now()
+current_date = datetime.now()
 
-def get_label(folder:Path):
+def get_label(folder):
     folder_name = folder.name
-
     label = folder_name[folder_name.find("[")+1:folder_name.find("]")] # Ewww...
 
-    if label in ["T", "FINISHED", "EXTEND"]:
-        return label
-    return None
+    return label
 
-def check_creation(folder):
+def get_creation(folder):
     return datetime.fromtimestamp(os.stat(folder).st_birthtime)
 
-def calc_deadline(folder, label):
-    deadline = check_creation(folder) + timedelta(days=NORMAL)
+def get_deadline(folder, label):
+    deadline = get_creation(folder) + timedelta(days=NORMAL)
     if label == "EXTEND":
         deadline += timedelta(days=EXTENSION)
     return deadline
 
 
-def send_graveyard(root, folder:Path):
+def send_to_graveyard(root, folder):
     graveyard = Path(f"{root}/[T]GRAVEYARD")
     if not graveyard.exists():
         os.mkdir(graveyard)
-    
+
     shutil.move(folder, graveyard)
 
 def checker(root, folder:Path):
     label = get_label(folder)
-    if not label in ["T", "FINISHED"]:
+    if not label == "T": 
         for directory in folder.iterdir():
             directory = Path(directory)
             
             label = get_label(directory)
-            deadline = calc_deadline(directory, label)
-
-            print(label)
+            deadline = get_deadline(directory, label)
             
             if directory.is_dir():    
-                if label == "T":
+                if label == "F":
                     checker(root, directory)
-                elif current_date < deadline and not label in ["T", "FINISHED"]:
-                    send_graveyard(root, directory)
-    return
+                elif current_date >= deadline and label not in ["FINISHED"]:
+                    send_to_graveyard(root, directory)
 
 
 if __name__ == "__main__":
