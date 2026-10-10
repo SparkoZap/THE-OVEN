@@ -1,11 +1,17 @@
+# Add this script to any folder you want THE OVEN to be...
+
+import os
+import subprocess
+
 import shutil
 from pathlib import Path
+
 from datetime import datetime, timedelta
 
 NORMAL = 30
 EXTENSION = 12
-
 CURRENT_DATE = datetime.now()
+
 
 def get_folder_label(folder):
     folder_name:str = folder.name
@@ -31,12 +37,20 @@ def calc_deadline(folder, folder_label):
 
 
 def send_to_graveyard(root, folder):
-    GRAVEYARD = root / "[T]GRAVEYARD"
+    GRAVEYARD = root / "[T] GRAVEYARD"
     
     if not GRAVEYARD.exists():
         GRAVEYARD.mkdir()
 
+    restrict_access(folder)
     shutil.move(folder, GRAVEYARD)
+
+
+def restrict_access(folder:Path):
+    folder_path = os.path.abspath(folder)
+
+    if Path(folder_path).exists():
+        subprocess.run(["icacls", folder_path, "/inheritance:r", "/grant", "Everyone:(OI)(CI)(R,D)"], check=True)
 
 
 def checker(root, folder:Path):
@@ -52,15 +66,14 @@ def checker(root, folder:Path):
         if directory.is_dir():
             if folder_label == "F": 
                 checker(root, directory)
-            elif CURRENT_DATE < deadline and not folder_label == "FINISHED":
+            elif folder_label == "FINISHED":
+                restrict_access(directory)
+            elif CURRENT_DATE < deadline:
                 send_to_graveyard(root, directory)
 
 
 
 if __name__ == "__main__":
-    root = Path("[OVEN]")
+    root = Path("OVEN")
 
-    if not root.exists():
-        root.mkdir()
-    
     checker(root, root)
