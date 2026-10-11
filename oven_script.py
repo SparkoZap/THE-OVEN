@@ -28,12 +28,21 @@ def get_creation(folder):
     return datetime.fromtimestamp(folder.stat().st_birthtime)
 
 
-def calc_deadline(folder, folder_label):
-    deadline = get_creation(folder) + timedelta(days=NORMAL)
+def calc_deadline(folder:Path, folder_label):
+    creation_date = get_creation(folder)
+    deadline = creation_date + timedelta(days=NORMAL)
     
     if folder_label == "EXTEND":
         deadline += timedelta(days=EXTENSION)
     return deadline
+
+
+def display_details(folder):
+    creation_date = get_creation(folder)
+    folder_label = get_folder_label(folder)
+    deadline = calc_deadline(folder, folder_label)
+
+    print(f"Folder: {folder.name} | Started: {creation_date.strftime("%b %d, %Y")}, Deadline: {deadline.strftime("%b %d, %Y")}")
 
 
 def send_to_graveyard(root, folder):
@@ -44,6 +53,8 @@ def send_to_graveyard(root, folder):
 
     restrict_access(folder)
     shutil.move(folder, GRAVEYARD)
+
+    print(f"{folder.name} has been sent to the graveyard...")
 
 
 def restrict_access(folder:Path):
@@ -59,21 +70,25 @@ def checker(root, folder:Path):
             continue
 
         directory = Path(directory)
-
         folder_label = get_folder_label(directory)
-        deadline = calc_deadline(directory, folder_label)
+
+        if not folder_label == "F":
+            deadline = calc_deadline(directory, folder_label)
         
         if directory.is_dir():
             if folder_label == "F": 
                 checker(root, directory)
             elif folder_label == "FINISHED":
                 restrict_access(directory)
-            elif CURRENT_DATE < deadline:
+            elif CURRENT_DATE >= deadline:
                 send_to_graveyard(root, directory)
+            else:
+                display_details(directory)
 
 
 
 if __name__ == "__main__":
-    root = Path("OVEN")
-
+    root = Path("../")
     checker(root, root)
+
+    input("\nPress Enter to exit...") # Keeps the command prompt open
