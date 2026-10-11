@@ -1,20 +1,15 @@
-# Add this script to any folder you want THE OVEN to be...
-
 import os
-import subprocess
-
 import shutil
+import subprocess
 from pathlib import Path
-
 from datetime import datetime, timedelta
 
 NORMAL = 30
 EXTENSION = 12
 CURRENT_DATE = datetime.now()
 
-
 def get_folder_label(folder):
-    folder_name:str = folder.name
+    folder_name = folder.name
 
     if "[" in folder_name and "]" in folder_name:
         folder_label = folder_name[folder_name.find("[")+1:folder_name.find("]")] # Ewww...
